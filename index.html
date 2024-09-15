@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>五子棋 - iPhone优化</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', sans-serif;
+            background-color: #f0f0f5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(180deg, #f0f0f5, #d1d1e0);
+            transition: background-color 0.3s, color 0.3s;
+            touch-action: manipulation; /* 防止双击放大 */
+        }
+
+        body.dark {
+            background-color: #2e2e2e;
+            color: #e0e0e0;
+            background: linear-gradient(180deg, #2e2e2e, #3a3a3a);
+        }
+
+        #gameContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameBoard {
+            width: 90vw;
+            height: 90vw;
+            max-width: 600px;
+            max-height: 600px;
+            background-color: #f0d9b5;
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+            border: 2px solid #333;
+            border-radius: 10px;
+            background-image: 
+                linear-gradient(0deg, transparent 49%, #333 49%, #333 50%, transparent 50%),
+                linear-gradient(90deg, transparent 49%, #333 49%, #333 50%, transparent 50%);
+            background-size: 40px 40px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        body.dark #gameBoard {
+            background-color: #4a4a4a;
+            border-color: #666;
+            background-image: 
+                linear-gradient(0deg, transparent 49%, #666 49%, #666 50%, transparent 50%),
+                linear-gradient(90deg, transparent 49%, #666 49%, #666 50%, transparent 50%);
+        }
+
+        .stone {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: auto;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s, opacity 0.3s;
+        }
+
+        .black {
+            background: radial-gradient(circle at 30% 30%, #333, #000);
+        }
+
+        .white {
+            background: radial-gradient(circle at 30% 30%, #fff, #ccc);
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        body.dark #status {
+            color: #bbb;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: #007aff;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover:enabled {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #b0c4de;
+        }
+
+        .toggle-dark-mode {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #333;
+        }
+
+        body.dark .toggle-dark-mode {
+            color: #e0e0e0;
+        }
+
+        .winnerMessage {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #007aff;
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            text-align: center;
+        }
+
+        #rules {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 300px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        body.dark #rules {
+            background: rgba(50, 50, 50, 0.9);
+            border-color: #555;
+        }
+
+        #rules h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: #007aff;
+        }
+
+        body.dark #rules h2 {
+            color: #1e90ff;
+        }
+
+        #rules button {
+            background-color: #ff3b30;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #rules button:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <h1>五子棋</h1>
+    <div id="gameBoard"></div>
+    <div id="status">黑方先行</div>
+    <div class="button-container">
+        <button id="restartButton" onclick="restartGame()">重新开始</button>
+        <button id="undoButton" onclick="undoMove()" disabled>悔棋</button>
+        <button onclick="toggleRules()">游戏规则</button>
+    </div>
+    <div id="winnerMessage" class="winnerMessage"></div>
+    <div id="rules">
+        <h2>游戏规则</h2>
+        <p>轮流落子，五子连线即可获胜。</p>
+        <button onclick="toggleRules()">关闭</button>
+    </div>
+</div>
+
+<button class="toggle-dark-mode" onclick="toggleDarkMode()">🌙</button>
+
+<script>
+    const size = 15;
+    let board = [];
+    let history = [];
+    let currentPlayer = 'black';
+    let gameEnded = false;
+    let rulesVisible = false;
+
+    const statusDiv = document.getElementById('status');
+    const gameBoard = document.getElementById('gameBoard');
+    const winnerMessage = document.getElementById('winnerMessage');
+    const rulesModal = document.getElementById('rules');
+    const restartButton = document.getElementById('restartButton');
+    const undoButton = document.getElementById('undoButton');
+
+    function initBoard() {
+        board = Array(size).fill(null).map(() => Array(size).fill(null));
+        gameBoard.innerHTML = '';
+        for (let i = 0; i < size * size; i++) {
+            const cell = document.createElement('div');
+            cell.style.gridColumn = (i % size) + 1;
+            cell.style.gridRow = Math.floor(i / size) + 1;
+            cell.addEventListener('click', () => makeMove(Math.floor(i / size), i % size));
+            gameBoard.appendChild(cell);
+        }
+        history = [];
+        currentPlayer
+        currentPlayer = 'black';
+        gameEnded = false;
+        statusDiv.innerText = '黑方先行';
+        winnerMessage.style.display = 'none';
+        undoButton.disabled = true;
+    }
+
+    function makeMove(row, col) {
+        if (gameEnded || board[row][col] || rulesVisible) return;
+
+        const stone = document.createElement('div');
+        stone.classList.add('stone', currentPlayer);
+        board[row][col] = currentPlayer;
+        gameBoard.children[row * size + col].appendChild(stone);
+
+        history.push({ row, col, player: currentPlayer });
+
+        if (checkWin(row, col)) {
+            endGame(currentPlayer);
+        } else {
+            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+            statusDiv.innerText = currentPlayer === 'black' ? '黑方下棋' : '白方下棋';
+            undoButton.disabled = false;
+        }
+    }
+
+    function checkWin(row, col) {
+        const directions = [
+            { dr: 0, dc: 1 }, { dr: 1, dc: 0 },
+            { dr: 1, dc: 1 }, { dr: 1, dc: -1 }
+        ];
+        for (const { dr, dc } of directions) {
+            let count = 1;
+            for (let i = 1; i < 5; i++) {
+                if (board[row + dr * i] && board[row + dr * i][col + dc * i] === currentPlayer) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+            for (let i = 1; i < 5; i++) {
+                if (board[row - dr * i] && board[row - dr * i][col - dc * i] === currentPlayer) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+
+    function endGame(player) {
+        gameEnded = true;
+        winnerMessage.innerText = (player === 'black' ? '黑方' : '白方') + '胜利';
+        winnerMessage.style.display = 'block';
+    }
+
+    function restartGame() {
+        initBoard();
+    }
+
+    function undoMove() {
+        if (history.length === 0 || gameEnded) return;
+        const lastMove = history.pop();
+        board[lastMove.row][lastMove.col] = null;
+        const cell = gameBoard.children[lastMove.row * size + lastMove.col];
+        cell.innerHTML = ''; // 添加淡出效果
+        const stones = cell.querySelectorAll('.stone');
+        stones.forEach(stone => {
+            stone.style.opacity = 0;
+            setTimeout(() => stone.remove(), 300); // 300ms后移除
+        });
+        currentPlayer = lastMove.player;
+        statusDiv.innerText = currentPlayer === 'black' ? '黑方下棋' : '白方下棋';
+        undoButton.disabled = history.length === 0;
+    }
+
+    function toggleRules() {
+        rulesVisible = !rulesVisible;
+        rulesModal.style.display = rulesVisible ? 'block' : 'none';
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark');
+    }
+
+    function systemDarkModeListener(e) {
+        if (e.matches) {
+            document.body.classList.add('dark');
+        } else {
+            document.body.classList.remove('dark');
+        }
+    }
+
+    initBoard();
+
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    darkModeMediaQuery.addListener(systemDarkModeListener);
+    if (darkModeMediaQuery.matches) {
+        document.body.classList.add('dark');
+    }
+</script>
+
+</body>
+</html>
